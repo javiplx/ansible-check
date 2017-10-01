@@ -1,0 +1,84 @@
+#!/usr/bin/python
+
+from fevertools import defaults, read_file
+
+from jinja2 import Environment, FileSystemLoader
+import difflib
+
+import os
+
+xml = False
+
+if len(os.sys.argv) == 5 and os.sys.argv[3] == '--xml' :
+    xml = os.sys.argv.pop()
+    os.sys.argv.pop()
+if len(os.sys.argv) == 7 and os.sys.argv[5] == '--xml' :
+    xml = os.sys.argv.pop()
+    os.sys.argv.pop()
+
+if xml :
+    writecmd = open( '%s/TEST-ansible.xml' % xml , 'w').write
+else :
+    writecmd = os.sys.stdout.write
+
+if xml :
+    writecmd( """<testsuite name="Ansible role">
+  <testcase name="Renderization of django settings" >""")
+
+group_vars = None
+
+if len(os.sys.argv) == 5 and os.sys.argv[3] == '--vars' :
+    group_vars = os.sys.argv.pop()
+    os.sys.argv.pop()
+
+if len(os.sys.argv) != 3 :
+    writecmd( "Usage: %s role_directory comparison_file [--xml output_dir]\n" % os.sys.argv[0] )
+    if not xml :
+        os.sys.exit(1)
+
+print xml, group_vars
+if not os.path.isfile( os.sys.argv[2] ) :
+    writecmd( "ERROR: %s not found\n" % os.sys.argv[2] )
+    if not xml :
+        os.sys.exit(2)
+
+basefile = read_file( os.sys.argv[2] )
+basefile = basefile[:-1].splitlines(True)
+
+
+env = Environment(loader=FileSystemLoader(os.sys.argv[1]))
+template = env.get_template('templates/local_settings.j2')
+
+runtime = {
+  'appname' : 'fever2',
+  'username' : 'fever'
+  }
+
+
+defaults = defaults( env , runtime , group_vars )
+
+rendered = template.render(defaults).splitlines(True)
+
+diff = difflib.unified_diff( rendered , basefile , fromfile='template', tofile=os.sys.argv[2])
+
+try :
+    outline = diff.next()
+    if xml :
+        writecmd( """    <failure message="settings renderization failure" type="failed">
+      <![CDATA[""")
+    writecmd( outline )
+    for outline in diff :
+        writecmd( outline )
+    if xml :
+        writecmd( """]]>
+      </failure>""")
+    else :
+        os.sys.exit(-1)
+except StopIteration :
+    if not xml :
+        writecmd( "Template from %s matches %s\n" % tuple(os.sys.argv[1:]) )
+
+if xml :
+    writecmd( """  </testcase>
+</testsuite>""")
+

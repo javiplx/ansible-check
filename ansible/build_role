@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -e
+
+SUBDIR=
+if [ $# == 2 ] ; then
+  SUBDIR="$1/"
+  shift
+  fi
+
+if [ $# != 1 ] ; then
+  echo "Usage : ${0##*/} [roles_parent] rolename"
+  exit 1
+  fi
+
+ROLE=$1
+ROLEDIR=${SUBDIR}roles/${ROLE}
+
+if [ ! -d ${ROLEDIR} ] ; then
+  echo "ERROR: role '${ROLE}' not found"
+  exit 2
+  fi
+
+if [ ! -f ${ROLEDIR}/meta/main.yml ] ; then
+  echo "ERROR: no metadata for ${ROLE}"
+  exit 3
+  fi
+
+set -- $( grep -w version: ${ROLEDIR}/meta/main.yml )
+
+VERSION=$2
+if [ -z "${VERSION}" ] ; then
+  echo "ERROR: no version defined on ${ROLE} metadata"
+  exit 4
+  fi
+
+OUTPUT=${ROLE}-${VERSION}.tar.gz
+
+if [ -f ${OUTPUT} ] ; then
+  echo "ERROR: version ${VERSION} for ${ROLE} already in place"
+  exit 5
+  fi
+
+echo "Packaging $( basename ${OUTPUT} ) , ${VERSION}"
+mkdir -p $( dirname ${OUTPUT} )
+tar -czf ${OUTPUT} -C ${SUBDIR}roles ${ROLE}
+
+curl --data-binary @${OUTPUT} -X PUT http://galaxy.servers.feverup.com:3333/${ROLE}/${VERSION}
+
