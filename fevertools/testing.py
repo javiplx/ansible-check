@@ -1,6 +1,4 @@
 
-import fevertests
-
 from jinja2 import Template
 
 from ansible.utils import merge_hash
@@ -9,16 +7,6 @@ import yaml
 import os
 
 from codecs import open
-
-def apitests ( endpoint , stage='production' ) :
-    result , statuses = fevertests.run( stage , endpoint )
-    if result :
-        return True
-    print "ERROR : failures on API tests"
-    for k,v in statuses.iteritems() :
-        if v != 0 :
-            print "  %s : %s" % ( k , v )
-    return False
 
 def read_file( file_name ) :
     output = ""
